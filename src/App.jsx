@@ -1,12 +1,13 @@
 import { BookOpen, ChevronRight, CircleX, Command, GlassWater, Search, Sparkles } from 'lucide-react';
 import React from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import heroImage from './assets/de-vin-cinematic-hero.png';
 import { CommandPalette } from './components/ui/CommandPalette.jsx';
 import { createCommandGroups } from './data/commandGroups.js';
 import { wines } from './data/wines.js';
 
 const filters = ['All', 'Red', 'White'];
+const shortcutLabel = '⌘/Ctrl K';
 
 function App() {
   const [activeFilter, setActiveFilter] = useState('All');
@@ -14,6 +15,24 @@ function App() {
   const [activeRecipe, setActiveRecipe] = useState(null);
   const [commandOpen, setCommandOpen] = useState(false);
   const catalogRef = useRef(null);
+  const hasOpenOverlay = commandOpen || Boolean(activeRecipe);
+
+  const openCommandPalette = useCallback(() => {
+    setActiveRecipe(null);
+    setCommandOpen(true);
+  }, []);
+
+  const handleCommandOpenChange = useCallback(
+    (isOpen) => {
+      if (isOpen) {
+        openCommandPalette();
+        return;
+      }
+
+      setCommandOpen(false);
+    },
+    [openCommandPalette],
+  );
 
   const filteredWines = useMemo(() => {
     if (activeFilter === 'All') {
@@ -73,120 +92,133 @@ function App() {
 
   return (
     <main className="app-shell">
-      <section className="catalog-hero" aria-labelledby="page-title">
-        <img src={heroImage} alt="" className="hero-image" />
-        <div className="hero-vignette" />
-        <header className="hero-content">
-          <p className="eyebrow">Bottle-first wine formulas</p>
-          <h1 id="page-title">De vin</h1>
-          <p className="hero-copy">
-            Choose a familiar bottle, then learn simple ways to turn it into a balanced glass.
-          </p>
-          <button className="hero-command" type="button" onClick={() => setCommandOpen(true)}>
-            <Command aria-hidden="true" size={17} />
-            Search formulas
-            <kbd>⌘K</kbd>
-          </button>
-        </header>
-      </section>
+      <div className="page-content" inert={hasOpenOverlay || undefined} aria-hidden={hasOpenOverlay || undefined}>
+        <section className="catalog-hero" aria-labelledby="page-title">
+          <img src={heroImage} alt="" className="hero-image" />
+          <div className="hero-vignette" />
+          <header className="hero-content">
+            <p className="eyebrow">Bottle-first wine formulas</p>
+            <h1 id="page-title">De vin</h1>
+            <p className="hero-copy">
+              Choose a familiar bottle, then learn simple ways to turn it into a balanced glass.
+            </p>
+            <button
+              aria-label={`Search formulas ${shortcutLabel}`}
+              className="hero-command"
+              type="button"
+              onClick={openCommandPalette}
+            >
+              <Command aria-hidden="true" size={17} />
+              Search formulas
+              <kbd>{shortcutLabel}</kbd>
+            </button>
+          </header>
+        </section>
 
-      <section className="catalog-panel" aria-label="Wine formula catalog" ref={catalogRef}>
-        <div className="catalog-toolbar">
-          <div>
-            <p className="section-kicker">Start with the bottle</p>
-            <h2>Choose your wine</h2>
+        <section className="catalog-panel" aria-label="Wine formula catalog" ref={catalogRef}>
+          <div className="catalog-toolbar">
+            <div>
+              <p className="section-kicker">Start with the bottle</p>
+              <h2>Choose your wine</h2>
+            </div>
+
+            <div className="toolbar-actions">
+              <button
+                aria-label={`Find formula ${shortcutLabel}`}
+                className="find-button"
+                type="button"
+                onClick={openCommandPalette}
+              >
+                <Search aria-hidden="true" size={17} />
+                Find formula
+                <kbd>{shortcutLabel}</kbd>
+              </button>
+
+              <div className="filter-group" aria-label="Filter wine families">
+                <span className={`filter-thumb ${activeFilter.toLowerCase()}`} aria-hidden="true" />
+                {filters.map((filter) => (
+                  <button
+                    aria-pressed={activeFilter === filter}
+                    className={activeFilter === filter ? 'filter-button active' : 'filter-button'}
+                    key={filter}
+                    type="button"
+                    onClick={() => setActiveFilter(filter)}
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
-          <div className="toolbar-actions">
-            <button className="find-button" type="button" onClick={() => setCommandOpen(true)}>
-              <Search aria-hidden="true" size={17} />
-              Find formula
-              <kbd>⌘K</kbd>
-            </button>
-
-            <div className="filter-group" aria-label="Filter wine families">
-              <span className={`filter-thumb ${activeFilter.toLowerCase()}`} aria-hidden="true" />
-              {filters.map((filter) => (
+          <div className="wine-grid">
+            {filteredWines.map((wine) => (
                 <button
-                  className={activeFilter === filter ? 'filter-button active' : 'filter-button'}
-                  key={filter}
+                  className={selectedWine.id === wine.id ? 'wine-card selected' : 'wine-card'}
+                  key={wine.id}
+                  style={{ '--accent': wine.accent }}
                   type="button"
-                  onClick={() => setActiveFilter(filter)}
+                  onClick={() => setSelectedWineId(wine.id)}
                 >
-                  {filter}
+                  <span className="bottle-wrap" aria-hidden="true">
+                    <span className="bottle-neck" />
+                    <span className="bottle-body" />
+                  </span>
+                  <span className="wine-card-copy">
+                    <span className="wine-family">{wine.family}</span>
+                    <strong>{wine.name}</strong>
+                    <span>{wine.profile}</span>
+                  </span>
+                  <ChevronRight aria-hidden="true" size={18} />
                 </button>
               ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="wine-grid">
-          {filteredWines.map((wine) => (
-            <button
-              className={selectedWine.id === wine.id ? 'wine-card selected' : 'wine-card'}
-              key={wine.id}
-              style={{ '--accent': wine.accent }}
-              type="button"
-              onClick={() => setSelectedWineId(wine.id)}
-            >
-              <span className="bottle-wrap" aria-hidden="true">
-                <span className="bottle-neck" />
-                <span className="bottle-body" />
-              </span>
-              <span className="wine-card-copy">
-                <span className="wine-family">{wine.family}</span>
-                <strong>{wine.name}</strong>
-                <span>{wine.profile}</span>
-              </span>
-              <ChevronRight aria-hidden="true" size={18} />
-            </button>
-          ))}
-        </div>
-
-        <section className="results-section" aria-labelledby="results-heading">
-          <div className="selected-wine">
-            <div>
-              <p className="section-kicker">Selected bottle</p>
-              <h2 id="results-heading">{selectedWine.name}</h2>
-              <p>{selectedWine.profile}</p>
-            </div>
-            <div className="formula-count">
-              <BookOpen aria-hidden="true" size={18} />
-              {selectedWine.recipes.length} formulas
-            </div>
           </div>
 
-          <div className="recipe-grid">
-            {selectedWine.recipes.map((recipe) => (
-              <article className="recipe-card" key={recipe.id}>
-                <div className="recipe-card-top">
-                  <span className="difficulty">{recipe.difficulty}</span>
-                  <GlassWater aria-hidden="true" size={20} />
-                </div>
-                <h3>{recipe.name}</h3>
-                <p>{recipe.tasteNotes.join(' / ')}</p>
-                <div className="recipe-meta">
-                  <span>{recipe.glassware}</span>
-                  <span>{recipe.ingredients.length} ingredients</span>
-                </div>
-                <button type="button" className="recipe-button" onClick={() => setActiveRecipe(recipe)}>
-                  <Search aria-hidden="true" size={17} />
-                  View formula
-                </button>
-              </article>
-            ))}
-          </div>
+          <section className="results-section" aria-labelledby="results-heading">
+            <div className="selected-wine">
+              <div>
+                <p className="section-kicker">Selected bottle</p>
+                <h2 id="results-heading">{selectedWine.name}</h2>
+                <p>{selectedWine.profile}</p>
+              </div>
+              <div className="formula-count">
+                <BookOpen aria-hidden="true" size={18} />
+                {selectedWine.recipes.length} formulas
+              </div>
+            </div>
+
+            <div className="recipe-grid">
+              {selectedWine.recipes.map((recipe) => (
+                <article className="recipe-card" key={recipe.id}>
+                  <div className="recipe-card-top">
+                    <span className="difficulty">{recipe.difficulty}</span>
+                    <GlassWater aria-hidden="true" size={20} />
+                  </div>
+                  <h3>{recipe.name}</h3>
+                  <p>{recipe.tasteNotes.join(' / ')}</p>
+                  <div className="recipe-meta">
+                    <span>{recipe.glassware}</span>
+                    <span>{recipe.ingredients.length} ingredients</span>
+                  </div>
+                  <button type="button" className="recipe-button" onClick={() => setActiveRecipe(recipe)}>
+                    <Search aria-hidden="true" size={17} />
+                    View formula
+                  </button>
+                </article>
+              ))}
+            </div>
+          </section>
         </section>
-      </section>
 
-      <footer className="site-footer">
-        <Sparkles aria-hidden="true" size={16} />
-        For people of legal drinking age. Enjoy slowly, measure honestly, and drink responsibly.
-      </footer>
+        <footer className="site-footer">
+          <Sparkles aria-hidden="true" size={16} />
+          For people of legal drinking age. Enjoy slowly, measure honestly, and drink responsibly.
+        </footer>
+      </div>
 
       <CommandPalette
         open={commandOpen}
-        onOpenChange={setCommandOpen}
+        onOpenChange={handleCommandOpenChange}
         groups={commandGroups}
         placeholder="Search Pinot, spritz, citrus, glassware..."
         emptyMessage="No matching wine formula. Try a bottle, ingredient, or taste note."

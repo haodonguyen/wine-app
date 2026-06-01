@@ -11,7 +11,6 @@ export function createCommandGroups(wines, { selectWine, openRecipe, focusCatalo
           label: 'Browse bottle catalog',
           description: 'Return to the wine selection cards',
           icon: Search,
-          shortcut: ['G', 'B'],
           keywords: ['browse', 'catalog', 'bottle', 'wine'],
           onSelect: focusCatalog,
         },

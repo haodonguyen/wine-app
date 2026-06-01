@@ -35,7 +35,9 @@ export function CommandPalette({
 }) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const dialogRef = useRef(null);
   const inputRef = useRef(null);
+  const previousFocusRef = useRef(null);
 
   const filteredGroups = useMemo(() => {
   return groups
@@ -81,9 +83,13 @@ export function CommandPalette({
     if (!open) {
       setQuery('');
       setSelectedIndex(0);
+      if (previousFocusRef.current && document.contains(previousFocusRef.current)) {
+        previousFocusRef.current.focus();
+      }
       return undefined;
     }
 
+    previousFocusRef.current = document.activeElement;
     const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 40);
     return () => window.clearTimeout(focusTimer);
   }, [open]);
@@ -112,6 +118,28 @@ export function CommandPalette({
   };
 
   const handleKeyDown = (event) => {
+    if (event.key === 'Tab') {
+      const focusable = Array.from(
+        dialogRef.current?.querySelectorAll('button, input, [href], [tabindex]:not([tabindex="-1"])') ?? [],
+      ).filter((element) => !element.hasAttribute('disabled'));
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (!first || !last) {
+        return;
+      }
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+
+      return;
+    }
+
     if (event.key === 'Escape') {
       event.preventDefault();
       onOpenChange(false);
@@ -144,6 +172,7 @@ export function CommandPalette({
         aria-label="Command palette"
         aria-modal="true"
         className="command-palette"
+        ref={dialogRef}
         role="dialog"
         onKeyDown={handleKeyDown}
         onMouseDown={(event) => event.stopPropagation()}
@@ -162,7 +191,7 @@ export function CommandPalette({
           </button>
         </div>
 
-        <div className="command-list" role="listbox" aria-label="Wine formula commands">
+        <div className="command-list" aria-label="Wine formula commands">
           {filteredGroups.length === 0 ? <p className="command-empty">{emptyMessage}</p> : null}
 
           {filteredGroups.map((group) => (
@@ -179,8 +208,6 @@ export function CommandPalette({
                     className={isSelected ? 'command-item selected' : 'command-item'}
                     key={item.id}
                     type="button"
-                    role="option"
-                    aria-selected={isSelected}
                     onMouseEnter={() => setSelectedIndex(itemIndex)}
                     onClick={() => selectItem(item)}
                   >
