@@ -1,7 +1,9 @@
-import { BookOpen, ChevronRight, CircleX, GlassWater, Search, Sparkles } from 'lucide-react';
+import { BookOpen, ChevronRight, CircleX, Command, GlassWater, Search, Sparkles } from 'lucide-react';
 import React from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import heroImage from './assets/de-vin-cinematic-hero.png';
+import { CommandPalette } from './components/ui/CommandPalette.jsx';
+import { createCommandGroups } from './data/commandGroups.js';
 import { wines } from './data/wines.js';
 
 const filters = ['All', 'Red', 'White'];
@@ -10,6 +12,8 @@ function App() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [selectedWineId, setSelectedWineId] = useState(wines[0].id);
   const [activeRecipe, setActiveRecipe] = useState(null);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const catalogRef = useRef(null);
 
   const filteredWines = useMemo(() => {
     if (activeFilter === 'All') {
@@ -20,6 +24,31 @@ function App() {
   }, [activeFilter]);
 
   const selectedWine = wines.find((wine) => wine.id === selectedWineId) ?? filteredWines[0] ?? wines[0];
+
+  const commandGroups = useMemo(
+    () =>
+      createCommandGroups(wines, {
+        selectWine: (wineId) => {
+          const nextWine = wines.find((wine) => wine.id === wineId);
+          if (nextWine) {
+            setActiveFilter('All');
+            setSelectedWineId(wineId);
+            setActiveRecipe(null);
+            window.requestAnimationFrame(() => catalogRef.current?.scrollIntoView({ behavior: 'smooth' }));
+          }
+        },
+        openRecipe: (wineId, recipe) => {
+          setActiveFilter('All');
+          setSelectedWineId(wineId);
+          setActiveRecipe(recipe);
+        },
+        focusCatalog: () => {
+          setActiveRecipe(null);
+          catalogRef.current?.scrollIntoView({ behavior: 'smooth' });
+        },
+      }),
+    [],
+  );
 
   useEffect(() => {
     if (!filteredWines.some((wine) => wine.id === selectedWineId)) {
@@ -53,27 +82,41 @@ function App() {
           <p className="hero-copy">
             Choose a familiar bottle, then learn simple ways to turn it into a balanced glass.
           </p>
+          <button className="hero-command" type="button" onClick={() => setCommandOpen(true)}>
+            <Command aria-hidden="true" size={17} />
+            Search formulas
+            <kbd>⌘K</kbd>
+          </button>
         </header>
       </section>
 
-      <section className="catalog-panel" aria-label="Wine formula catalog">
+      <section className="catalog-panel" aria-label="Wine formula catalog" ref={catalogRef}>
         <div className="catalog-toolbar">
           <div>
             <p className="section-kicker">Start with the bottle</p>
             <h2>Choose your wine</h2>
           </div>
 
-          <div className="filter-group" aria-label="Filter wine families">
-            {filters.map((filter) => (
-              <button
-                className={activeFilter === filter ? 'filter-button active' : 'filter-button'}
-                key={filter}
-                type="button"
-                onClick={() => setActiveFilter(filter)}
-              >
-                {filter}
-              </button>
-            ))}
+          <div className="toolbar-actions">
+            <button className="find-button" type="button" onClick={() => setCommandOpen(true)}>
+              <Search aria-hidden="true" size={17} />
+              Find formula
+              <kbd>⌘K</kbd>
+            </button>
+
+            <div className="filter-group" aria-label="Filter wine families">
+              <span className={`filter-thumb ${activeFilter.toLowerCase()}`} aria-hidden="true" />
+              {filters.map((filter) => (
+                <button
+                  className={activeFilter === filter ? 'filter-button active' : 'filter-button'}
+                  key={filter}
+                  type="button"
+                  onClick={() => setActiveFilter(filter)}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -140,6 +183,14 @@ function App() {
         <Sparkles aria-hidden="true" size={16} />
         For people of legal drinking age. Enjoy slowly, measure honestly, and drink responsibly.
       </footer>
+
+      <CommandPalette
+        open={commandOpen}
+        onOpenChange={setCommandOpen}
+        groups={commandGroups}
+        placeholder="Search Pinot, spritz, citrus, glassware..."
+        emptyMessage="No matching wine formula. Try a bottle, ingredient, or taste note."
+      />
 
       {activeRecipe ? <RecipeModal recipe={activeRecipe} onClose={() => setActiveRecipe(null)} /> : null}
     </main>
